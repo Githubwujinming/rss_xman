@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import StepLR
 import utils.dataset_deeplab as my_dataset
 import config.rssia_config as cfg
 import preprocessing.transforms as trans
+
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import os
 from tensorboardX import SummaryWriter
 
@@ -26,8 +28,8 @@ def main():
                                     cfg.TRAIN_TXT_PATH, 'train', transform=True, transform_med=train_transform_det)
     val_data = my_dataset.Dataset(cfg.VAL_DATA_PATH, cfg.VAL_LABEL_PATH,
                                   cfg.VAL_TXT_PATH, 'val', transform=True, transform_med=val_transform_det)
-    train_dataloader = DataLoader(train_data, batch_size=cfg.BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True)
-    val_dataloader = DataLoader(val_data, batch_size=cfg.BATCH_SIZE, shuffle=False, num_workers=8, pin_memory=True)
+    train_dataloader = DataLoader(train_data, batch_size=cfg.BATCH_SIZE, shuffle=True, num_workers=1, pin_memory=True)
+    val_dataloader = DataLoader(val_data, batch_size=cfg.BATCH_SIZE, shuffle=False, num_workers=1, pin_memory=True)
 
     model = DeepLabV3(model_id=1,project_dir=cfg.BASE_PATH)
     if cfg.RESUME:
@@ -48,12 +50,11 @@ def main():
 
     # params = [{'params': md.parameters()} for md in model.children() if md in [model.classifier]]
     optimizer = optim.Adam(model.parameters(), lr=cfg.INIT_LEARNING_RATE, weight_decay=cfg.DECAY)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, eps=1e-08)
     fl = FocalLoss2d(gamma=cfg.FOCAL_LOSS_GAMMA)
     Loss_list = []
     Accuracy_list = []
-    scheduler = StepLR(optimizer,step_size=8, gamma=0.1)
     for epoch in range(cfg.EPOCH):
-        scheduler.step()
         print('epoch {}'.format(epoch+1))
         #training--------------------------
         train_loss = 0
@@ -75,6 +76,7 @@ def main():
             optimizer.step()
 
 
+
             if(batch_idx) % 5 == 0:
                 model.eval()
                 val_loss = 0
@@ -85,13 +87,14 @@ def main():
                     val_out = model(v_batch_det_img)
                     del v_batch_det_img
                     val_loss += float(calc_loss(val_out, v_batch_y))
+                scheduler.step(val_loss)
                 del val_out, v_batch_y
                 print("Train Loss: {:.6f}  Val Loss: {:.10f}".format(loss, val_loss))
 
-        if (epoch+1)%5 == 0:
+        if (epoch+1)%10 == 0:
             torch.save({'state_dict':model.state_dict()},
-                       os.path.join(cfg.SAVE_MODEL_PATH, cfg.TRAIN_LOSS, 'model_tif_deeplab_bce_'+str(epoch+1)+'.pth'))
+                       os.path.join(cfg.SAVE_MODEL_PATH, cfg.TRAIN_LOSS, 'model_tif_deeplab18_bce_240*240_'+str(epoch+1)+'.pth'))
     torch.save({'state_dict': model.state_dict()},
-                   os.path.join(cfg.SAVE_MODEL_PATH, cfg.TRAIN_LOSS, 'model_tif_deeplab_bce_last.pth'))
+                   os.path.join(cfg.SAVE_MODEL_PATH, cfg.TRAIN_LOSS, 'model_tif_deeplab18_bce_240*240_last.pth'))
 if __name__ == '__main__':
     main()

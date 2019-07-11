@@ -128,7 +128,7 @@ class SiamUNetU(nn.Module):
         super(SiamUNetU, self).__init__()
 
         n1 = 64
-        filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16]
+        filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16, n1*32]
 
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.Up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
@@ -138,59 +138,59 @@ class SiamUNetU(nn.Module):
         self.conv2_0 = conv_block_nested(filters[1], filters[2], filters[2])
         self.conv3_0 = conv_block_nested(filters[2], filters[3], filters[3])
         self.conv4_0 = conv_block_nested(filters[3], filters[4], filters[4])
-
-        self.conv1 = conv_block_nested(filters[0] * 2, filters[0], filters[0])
-        self.conv2 = conv_block_nested(filters[1] * 2, filters[1], filters[1])
-        self.conv3 = conv_block_nested(filters[2] * 2, filters[2], filters[2])
-        self.conv4 = conv_block_nested(filters[3] * 2, filters[3], filters[3])
-        self.conv5 = conv_block_nested(filters[4] * 2, filters[4], filters[4])
-
+        self.conv5_0 = conv_block_nested(filters[4], filters[5], filters[5])
 
         self.bn1 = nn.BatchNorm2d(filters[0])
         self.bn2 = nn.BatchNorm2d(filters[1])
         self.bn3 = nn.BatchNorm2d(filters[2])
         self.bn4 = nn.BatchNorm2d(filters[3])
         self.bn5 = nn.BatchNorm2d(filters[4])
+        self.bn6 = nn.BatchNorm2d(filters[5])
 
         self.conv0_1 = conv_block_nested(filters[0] + filters[1], filters[0], filters[0])
         self.conv1_1 = conv_block_nested(filters[1] + filters[2], filters[1], filters[1])
         self.conv2_1 = conv_block_nested(filters[2] + filters[3], filters[2], filters[2])
         self.conv3_1 = conv_block_nested(filters[3] + filters[4], filters[3], filters[3])
+        self.conv4_1 = conv_block_nested(filters[4] + filters[5], filters[4], filters[4])
 
         self.conv0_2 = conv_block_nested(filters[0] * 2 + filters[1], filters[0], filters[0])
         self.conv1_2 = conv_block_nested(filters[1] * 2 + filters[2], filters[1], filters[1])
         self.conv2_2 = conv_block_nested(filters[2] * 2 + filters[3], filters[2], filters[2])
+        self.conv3_2 = conv_block_nested(filters[3] * 2 + filters[4], filters[3], filters[3])
 
         self.conv0_3 = conv_block_nested(filters[0] * 3 + filters[1], filters[0], filters[0])
         self.conv1_3 = conv_block_nested(filters[1] * 3 + filters[2], filters[1], filters[1])
+        self.conv2_3 = conv_block_nested(filters[2] * 3 + filters[3], filters[2], filters[2])
 
         self.conv0_4 = conv_block_nested(filters[0] * 4 + filters[1], filters[0], filters[0])
+        self.conv1_4 = conv_block_nested(filters[1] * 4 + filters[2], filters[1], filters[1])
+
+        self.conv0_5 = conv_block_nested(filters[0] * 5 + filters[1], filters[0], filters[0])
 
         self.final = nn.Conv2d(filters[0], out_ch, kernel_size=1)
 
     def forward(self, x1, x2):
         x1_0_0 = self.conv0_0(x1)
         x2_0_0 = self.conv0_0(x2)
-        x0_0 = self.conv1(torch.cat([x2_0_0, x1_0_0], 1))
-
+        x0_0 = x2_0_0 - x1_0_0
         x0_0 = self.bn1(x0_0)
 
         x1_1_0 = self.conv1_0(self.pool(x1_0_0))
         x2_1_0 = self.conv1_0(self.pool(x2_0_0))
-        x1_0 = self.conv2(torch.cat([x2_1_0, x1_1_0], 1))
+        x1_0 = x1_1_0 - x2_1_0
         x1_0 = self.bn2(x1_0)
         x0_1 = self.conv0_1(torch.cat([x0_0, self.Up(x1_0)], 1))
 
         x1_2_0 = self.conv2_0(self.pool(x1_1_0))
         x2_2_0 = self.conv2_0(self.pool(x2_1_0))
-        x2_0 = self.conv3(torch.cat([x2_2_0, x1_2_0], 1))
+        x2_0 = x2_2_0 - x1_2_0
         x2_0 = self.bn3(x2_0)
         x1_1 = self.conv1_1(torch.cat([x1_0, self.Up(x2_0)], 1))
         x0_2 = self.conv0_2(torch.cat([x0_0, x0_1, self.Up(x1_1)], 1))
 
         x1_3_0 = self.conv3_0(self.pool(x1_2_0))
         x2_3_0 = self.conv3_0(self.pool(x2_2_0))
-        x3_0 = self.conv4(torch.cat([x2_3_0, x1_3_0], 1))
+        x3_0 = x2_3_0 - x1_3_0
         x3_0 = self.bn4(x3_0)
         x2_1 = self.conv2_1(torch.cat([x2_0, self.Up(x3_0)], 1))
         x1_2 = self.conv1_2(torch.cat([x1_0, x1_1, self.Up(x2_1)], 1))
@@ -198,12 +198,22 @@ class SiamUNetU(nn.Module):
 
         x1_4_0 = self.conv4_0(self.pool(x1_3_0))
         x2_4_0 = self.conv4_0(self.pool(x2_3_0))
-        x4_0 = self.conv5(torch.cat([x2_4_0, x1_4_0], 1))
+        x4_0 = x2_4_0 - x1_4_0
         x4_0 = self.bn5(x4_0)
         x3_1 = self.conv3_1(torch.cat([x3_0, self.Up(x4_0)], 1))
         x2_2 = self.conv2_2(torch.cat([x2_0, x2_1, self.Up(x3_1)], 1))
         x1_3 = self.conv1_3(torch.cat([x1_0, x1_1, x1_2, self.Up(x2_2)], 1))
         x0_4 = self.conv0_4(torch.cat([x0_0, x0_1, x0_2, x0_3, self.Up(x1_3)], 1))
 
-        output = self.final(x0_4)
+        x1_5_0 = self.conv5_0(self.pool(x1_4_0))
+        x2_5_0 = self.conv5_0(self.pool(x2_4_0))
+        x5_0 = x2_5_0 - x1_5_0
+        x5_0 = self.bn6(x5_0)
+        x4_1 = self.conv4_1(torch.cat([x4_0, self.Up(x5_0)], 1))
+        x3_2 = self.conv3_2(torch.cat([x3_0, x3_1, self.Up(x4_1)]))
+        x2_3 = self.conv2_3(torch.cat([x2_0, x2_1, x2_2, self.Up(x3_2)], 1))
+        x1_4 = self.conv1_4(torch.cat([x1_0, x1_1, x1_2, x1_3, self.Up(x2_3)], 1))
+        x0_5 = self.conv0_5(torch.cat([x0_0, x0_1, x0_2, x0_3, x0_4, self.Up(x1_4)], 1))
+
+        output = self.final(x0_5)
         return output

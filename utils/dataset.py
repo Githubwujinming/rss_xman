@@ -4,6 +4,7 @@ import numpy as np
 import os
 import scipy.io
 import scipy.misc as m
+from preprocessing.remove_green import get_green
 from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
@@ -82,7 +83,7 @@ def decode_segmap(temp, plot=False):
 #### more details are presented in http://ghsi.github.io/assets/pdfs/alcantarilla16rss.pdf ###
 class Dataset(Dataset):
 
-    def __init__(self,img_path,label_path,file_name_txt_path,split_flag, transform=True, transform_med = None):
+    def __init__(self, img_path, label_path, file_name_txt_path, split_flag, transform=True, transform_med = None):
 
         self.label_path = label_path
         self.img_path = img_path
@@ -164,18 +165,18 @@ class Dataset(Dataset):
             if self.transform_med != None:
                 img1 = self.transform_med(img1)
                 img2 = self.transform_med(img2)
+
         ####### load labels ############
 
         if img1_path.endswith('.tif'):
-            import gdal
-            img1 = gdal.Open(img1_path)
-            img2 = gdal.Open(img2_path)
-            height = img1.RaasterYSize
-            width = img1.RasterXSize
-            img1 = img1.ReadAsArray(0, 0, width, height)
-            img2 = img2.ReadAsArray(0, 0, width, height)
-
+            img1, green_mask1 = get_green(img1_path, 0.3)
+            img2, green_mask2 = get_green(img2_path, 0.2)
+            height, width, _ = img1.shape
+            #
+            # img1 = img1.transpose(2, 1, 0)
+            # img2 = img2.transpose(2, 1, 0)
         img1 = np.array(img1, dtype=np.uint8)
+
         img2 = np.array(img2, dtype=np.uint8)
 
         if self.flag == 'train' or self.flag == 'val':
@@ -186,7 +187,7 @@ class Dataset(Dataset):
             label = np.array(label, dtype=np.int32)
 
         else:
-            label = np.zeros((height, width, 3), dtype=np.uint8)
+            label = np.zeros((height, width, 1), dtype=np.uint8)
         if self.transform:
             img1, img2, label = self.data_transform(img1, img2, label)
 
@@ -197,7 +198,7 @@ class Dataset(Dataset):
                label = self.transform_med(label)
             label = np.array(label,dtype=np.int32)
         '''''''''
-        return img1,img2,label,str(filename),int(height),int(width)
+        return img1,img2,label,str(filename),int(height),int(width),green_mask1,green_mask2
 
     def __len__(self):
 

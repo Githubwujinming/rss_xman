@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-
+import config.rssia_config as cfg
 name_img = defaultdict(list)
 
 def getProjection(sub_path,dir ):
@@ -13,7 +13,7 @@ def getProjection(sub_path,dir ):
         i += 1
 
 def main(base_dir):
-    output_dir = base_dir+"/train.txt"
+    output_dir = base_dir+"/val.txt"
     if os.path.exists(output_dir):
         os.remove(output_dir)
     dir_list = os.listdir(base_dir)
@@ -31,5 +31,6 @@ def main(base_dir):
         f.write('\n')
     f.close()
 if __name__=="__main__":
-    base_dir = "/media/ubuntu/45860a09-77fc-4f27-8cf3-5739e384e61d/huangw/rss_xman/datasets/rssrai2019_croped/train"
+    base_dir = "/home/ubuntu/PycharmProjects/datasets/rssai_tif_croped/val"
+    # base_dir = "/home/ubuntu/PycharmProjects/datasets/rssrai2019_new/val"
     main(base_dir)

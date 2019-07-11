@@ -38,7 +38,7 @@ def splitimage(img_src, rows, cols, des_path, filename):
         col = 0
         while (j + sig_box[1] <= size[1]):
             new_img = img.crop([i, j, i + sig_box[0], j + sig_box[1]])
-            save_path = os.path.join(des_path, filename + '_' + str(row)+ '_' + str(col) + '.jpg')
+            save_path = os.path.join(des_path, filename + '_' + str(row)+ '_' + str(col) + '.png')
             j += sig_box[1]
             col += 1
             if(os.path.exists(save_path)):
@@ -50,25 +50,30 @@ def splitimage(img_src, rows, cols, des_path, filename):
 
 import symbol
 
-source_path = "/home/ubuntu/PycharmProjects/datasets/rssrai2019_cd_v2/"
-des_path = "/home/ubuntu/PycharmProjects/datasets/rssrai2019_croped/"
+def check_dir(dir):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+source_path = "/home/ubuntu/PycharmProjects/datasets/im_plus"
+des_path = "/home/ubuntu/PycharmProjects/datasets/im_plus_croped/"
+check_dir(des_path)
 imgs_dir = ['img_2017', 'img_2018','mask']
 modes = ['train', 'val','test']
 for mode in modes:
     source_mode_path = os.path.join(source_path,mode)
     des_mode_path = os.path.join(des_path, mode)
-
+    check_dir(des_mode_path)
     for img_dir in imgs_dir:
         source_img_path = os.path.join(source_mode_path, img_dir)
         if not os.path.exists(source_img_path):
             continue
         des_img_path = os.path.join(des_mode_path, img_dir)
+        check_dir(des_img_path)
         imgFileList = os.listdir(source_img_path)
         for filename in imgFileList:
             img_src = os.path.join(source_img_path,filename)
             if img_src.endswith('.jpg') or img_src.endswith('.png'):
                 filename = img_src.split("/")[-1].split('.')[0]
-                splitimage(img_src,12, 12, des_img_path,filename)
+                splitimage(img_src,4, 4, des_img_path,filename)
 
 
 

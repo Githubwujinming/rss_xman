@@ -9,6 +9,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
 import config.rssia_config as cfg
+import preprocessing.transforms as trans
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -169,16 +170,16 @@ class Dataset(Dataset):
         ####### load labels ############
 
         if img1_path.endswith('.tif'):
-            img1, green_mask1 = get_green(img1_path, 0.3)
-            img2, green_mask2 = get_green(img2_path, 0.2)
+            img1, green_mask1 = get_green(img1_path, 0.4)
+            img2, green_mask2 = get_green(img2_path, 0.35)
             height, width, _ = img1.shape
             #
             # img1 = img1.transpose(2, 1, 0)
             # img2 = img2.transpose(2, 1, 0)
+
         img1 = np.array(img1, dtype=np.uint8)
 
         img2 = np.array(img2, dtype=np.uint8)
-
         if self.flag == 'train' or self.flag == 'val':
 
             label = Image.open(label_path)
@@ -198,7 +199,13 @@ class Dataset(Dataset):
                label = self.transform_med(label)
             label = np.array(label,dtype=np.int32)
         '''''''''
-        det_img = img2 - img1
+        # img1 = (img1 + abs(img1)) / 2
+        # img2 = (img2 + abs(img2)) / 2
+        # img1 = np.where(img1 <= 0, 0.0001, img1)
+        # img2 = np.where(img2 <= 0, 0.0001, img2)
+        #
+        # det_img = np.log(img2) - np.log(img1)
+        det_img = img2- img1
         return det_img,label,str(filename),int(height),int(width),green_mask1,green_mask2
 
     def __len__(self):

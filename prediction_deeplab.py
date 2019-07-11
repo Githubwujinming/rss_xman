@@ -28,7 +28,6 @@ from PIL import Image
 #         lbl = torch.from_numpy(np.where(lbl > 128, 1.0, 0.0)).float()
 #     return img1,img2
 def prediction( weight):
-    print("weight")
 
     best_metric = 0
     train_transform_det = trans.Compose([
@@ -55,14 +54,11 @@ def prediction( weight):
     test_dataloader = DataLoader(test_data, batch_size=cfg.TEST_BATCH_SIZE, shuffle=False, num_workers=8, pin_memory=True)
     crop = 0
 
-    rows = 12
-    cols = 12
-    i = 0
     for batch_idx, val_batch in enumerate(test_dataloader):
         model.eval()
         #
         # batch_x1, batch_x2, _, filename, h, w, green_mask1, green_mask2 = val_batch
-        batch_det_img, _, filename, h, w,_,_ = val_batch
+        batch_det_img, _, filename, h, w,_,green_mask2 = val_batch
         # green_mask1 = green_mask1.view(output_w, output_h, -1).data.cpu().numpy()
         filename = filename[0].split('/')[-1].replace('image','mask_2017')
         if crop:
@@ -105,7 +101,8 @@ def prediction( weight):
 
             # green_mask2 = green_mask2.view(output_w, output_h, -1).data.cpu().numpy()
 
-            output = (outputs).view(output_w, output_h, -1).data.cpu().numpy()
+            output = torch.sigmoid(outputs).view(output_w, output_h, -1).data.cpu().numpy()
+            # print(output.min(),output.max())
             output = np.where((output  > cfg.THRESH) , 255, 0)
             if not os.path.exists('./change'):
                 os.mkdir('./change')
@@ -116,5 +113,5 @@ if __name__ == "__main__":
 
     # weight="weights/CE_loss/model_tif_last.pth"
     # weight="weights/model20_1.pth"
-    weight="weights/CE_loss/model_tif_deeplab_50.pth"
+    weight="weights/CE_loss/model_tif_deeplab18_bce_240*240_50.pth"
     prediction(weight)
